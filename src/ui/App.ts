@@ -18,6 +18,7 @@ const DEFAULT_SPAN_TICKS = 3 * TICKS_PER_SECOND; // the original opens showing 3
 const MIN_SPAN_TICKS = 8;
 const VERTICAL_ZOOM_STEP = 1.4;
 const MIN_EXTENT = 0.01;
+const AUTO_SCROLL_MARGIN = 0.05; // fraction of the view left before the playhead after a page turn
 
 function el<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
@@ -43,6 +44,7 @@ export class App {
   private totalTicks = 0;
   private windowKind: WindowKind = 'hann';
   private playbackFrame = 0;
+  private autoScroll = true;
 
   private readonly waveZoom = el<HTMLInputElement>('wave-zoom');
   private readonly wavePan = el<HTMLInputElement>('wave-pan');
@@ -105,6 +107,11 @@ export class App {
             },
           },
           { separator: true },
+          {
+            label: 'Auto Scroll',
+            checked: () => this.autoScroll,
+            run: () => (this.autoScroll = !this.autoScroll),
+          },
           {
             label: 'Peak Note Labels',
             checked: () => this.spectrum.showPeakLabels,
@@ -538,10 +545,18 @@ export class App {
       const pos = this.engine.positionSeconds;
       if (pos === null) return;
       this.wave.playhead = pos * TICKS_PER_SECOND;
+      if (this.autoScroll) this.followPlayhead(this.wave.playhead);
       this.wave.invalidate();
       this.playbackFrame = requestAnimationFrame(step);
     };
     step();
+  }
+
+  /** Pages the view along when the playhead leaves it, leaving a little context before the playhead. */
+  private followPlayhead(tick: number): void {
+    const { left, span } = this.wave;
+    if (tick >= left && tick <= left + span) return;
+    this.setWaveView(tick - span * AUTO_SCROLL_MARGIN, span);
   }
 
   private playbackEnded(): void {

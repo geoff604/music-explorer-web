@@ -44,7 +44,7 @@ Your audio never leaves the page: files are decoded and analysed locally.
 - Zoom in and out with the zoom controls or your mouse wheel.
 - Pan left and right with the scroll bars, or by right-clicking and dragging.
 - On a phone or tablet, drag with two fingers to pan and pinch with two fingers to zoom.
-- Use the space bar to start and stop the audio.
+- Use the space bar (or the play button in the top toolbar) to start and stop the audio.
 - To zoom the waveform vertically in or out, use the top toolbar.
 
 *View → Window* switches between a **Hann** window (default; sharper peaks) and the original's

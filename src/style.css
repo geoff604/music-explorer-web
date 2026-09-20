@@ -233,10 +233,7 @@ body {
   cursor: crosshair;
 }
 .pane.spectrum {
-  cursor: grab;
-}
-.pane.spectrum.dragging {
-  cursor: grabbing;
+  cursor: pointer;
 }
 .pane.keys {
   cursor: pointer;

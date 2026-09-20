@@ -45,6 +45,7 @@ export class App {
   private windowKind: WindowKind = 'hann';
   private playbackFrame = 0;
   private autoScroll = true;
+  private noteHeld = false;
 
   private readonly waveZoom = el<HTMLInputElement>('wave-zoom');
   private readonly wavePan = el<HTMLInputElement>('wave-pan');
@@ -481,25 +482,19 @@ export class App {
 
   private wireSpectrum(): void {
     const canvas = this.spectrum.canvas;
-    let drag: { x: number; left: number } | null = null;
 
+    // Pressing sounds the note under the pointer, as clicking that key below would.
     canvas.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      // The graph and the keyboard share one uniform note grid, so any y in the upper half works.
+      const rect = canvas.getBoundingClientRect();
+      const note = hitTestKey(e.clientX - rect.left, 0, rect.width, 1, this.keys.range);
+      if (note < 0) return;
       canvas.setPointerCapture(e.pointerId);
-      drag = { x: e.clientX, left: this.keys.range.left };
-      canvas.classList.add('dragging');
+      this.pressNote(note);
     });
-    canvas.addEventListener('pointermove', (e) => {
-      if (!drag) return;
-      const count = this.keys.range.right - this.keys.range.left + 1;
-      const dNotes = ((e.clientX - drag.x) / canvas.clientWidth) * count;
-      this.setKeyView(drag.left - dNotes, count);
-    });
-    const end = () => {
-      drag = null;
-      canvas.classList.remove('dragging');
-    };
-    canvas.addEventListener('pointerup', end);
-    canvas.addEventListener('pointercancel', end);
+    canvas.addEventListener('pointerup', () => this.releaseNote());
+    canvas.addEventListener('pointercancel', () => this.releaseNote());
     this.wireKeyWheel(canvas);
   }
 
@@ -529,17 +524,6 @@ export class App {
 
   private wireKeyboard(): void {
     const canvas = this.keys.canvas;
-    let held = false;
-
-    const release = () => {
-      if (!held) return;
-      held = false;
-      this.engine.noteOff();
-      this.keys.pressed = -1;
-      this.spectrum.pressed = -1;
-      this.spectrum.invalidate();
-      this.keys.invalidate();
-    };
 
     canvas.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
@@ -547,17 +531,32 @@ export class App {
       const note = hitTestKey(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height, this.keys.range);
       if (note < 0) return;
       canvas.setPointerCapture(e.pointerId);
-      held = true;
-      this.keys.pressed = note;
-      this.spectrum.pressed = note;
-      this.spectrum.invalidate();
-      this.keys.invalidate();
-      void this.engine.noteOn(note);
+      this.pressNote(note);
     });
-    canvas.addEventListener('pointerup', release);
-    canvas.addEventListener('pointercancel', release);
-    window.addEventListener('blur', release);
+    canvas.addEventListener('pointerup', () => this.releaseNote());
+    canvas.addEventListener('pointercancel', () => this.releaseNote());
+    window.addEventListener('blur', () => this.releaseNote());
     this.wireKeyWheel(canvas);
+  }
+
+  /** Sound a note and mark it on the keyboard and the spectrum. Shared by both panes' clicks. */
+  private pressNote(note: number): void {
+    this.noteHeld = true;
+    this.keys.pressed = note;
+    this.spectrum.pressed = note;
+    this.spectrum.invalidate();
+    this.keys.invalidate();
+    void this.engine.noteOn(note);
+  }
+
+  private releaseNote(): void {
+    if (!this.noteHeld) return;
+    this.noteHeld = false;
+    this.engine.noteOff();
+    this.keys.pressed = -1;
+    this.spectrum.pressed = -1;
+    this.spectrum.invalidate();
+    this.keys.invalidate();
   }
 
   // ---- playback -------------------------------------------------------------------------

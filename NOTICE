@@ -1,0 +1,29 @@
+Music Explorer (JavaScript/TypeScript port)
+
+Copyright (C) 2003 Geoff Peters and Gabriel Lo   (original C++/MFC program, version 1.01)
+Copyright (C) 2026 Geoff Peters                  (this port)
+
+This program is free software; you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation; version 3 of the
+License, or (at your option) any later version. See the LICENSE file.
+
+Provenance
+----------
+This port was written from scratch against the behaviour of the original program. It follows the
+original's algorithms and constants (the semitone pitch axis, mu-law display scaling, the
+120-ticks-per-second SMPTE time grid, the per-tick mean-absolute waveform envelope, the
+wavetable tone generator), but it does not contain source code from the C++ version.
+
+In particular it contains no code from the libraries the original bundled or adapted:
+
+  - FFTW 2.x            (GPL)                 replaced by the small FFT in src/core/fft.ts
+  - "A Programmer's Guide to Sound" code by Tim Kientzle, 1997 (BSD-style licence with an
+    advertising clause)                       replaced by the browser's own audio decoding
+  - CWaveForm, a Win32 waveOut wrapper (Direct Line Corp., 1999-2000)
+                                              replaced by the Web Audio API
+
+The original program began as a project for CMPT 365 (Multimedia Systems) at Simon Fraser
+University.
+
+Runtime dependencies: none. The shipped app is plain TypeScript compiled by Vite. Development
+tools (Vite, TypeScript, Vitest) are used only to build and test it.

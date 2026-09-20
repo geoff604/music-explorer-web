@@ -37,6 +37,8 @@ export class WaveformView extends CanvasView {
   playhead: number | null = null;
   /** When the current file opened (performance.now()); the hint's demo drag runs from here. */
   introStart: number | null = null;
+  /** Set once the view has been panned, zoomed or paged, after which the suggestion box stays away. */
+  hintDismissed = false;
 
   private clump: { env: Float32Array; left: number; span: number; range: TickSelection | null } | null = null;
 
@@ -131,7 +133,7 @@ export class WaveformView extends CanvasView {
 
   private drawSuggestion(ctx: CanvasRenderingContext2D, w: number, h: number): void {
     const env = this.envelope;
-    if (!env || this.selection || this.drag) return;
+    if (!env || this.selection || this.drag || this.hintDismissed) return;
     const range = this.suggestedRange(env);
     if (!range) return;
 

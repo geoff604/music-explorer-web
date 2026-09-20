@@ -219,6 +219,7 @@ export class App {
       this.spectrum.hasFile = true;
       this.setKeyView(DEFAULT_KEY_LEFT, DEFAULT_KEY_COUNT);
       this.setWaveView(0, DEFAULT_SPAN_TICKS);
+      this.wave.hintDismissed = false; // after the line above, which dismisses it like any view change
 
       document.title = `${audio.name} – Music Explorer`;
       // No sample rate here: decodeAudioData resamples to the audio context's rate, so what we
@@ -239,6 +240,8 @@ export class App {
 
   private setWaveView(left: number, span: number): void {
     if (!this.hasFile) return;
+    // Any pan, zoom or auto-scroll page turn: the suggestion no longer matches what they see.
+    this.wave.hintDismissed = true;
     const s = clamp(Math.round(span), this.minSpan, this.totalTicks);
     this.wave.span = s;
     this.wave.left = clamp(Math.round(left), 0, this.totalTicks - s);

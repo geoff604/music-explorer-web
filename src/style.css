@@ -250,6 +250,10 @@ body {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  /* Mobile browsers tint whatever is tapped for a moment, and iOS shows a callout on a long press
+     (which holding a key is). The canvases draw their own pressed state, so switch both off. */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
 }
 .pane.wave {
   cursor: crosshair;

@@ -2,9 +2,11 @@ import { AudioEngine, AudioEngineOptions, LoadedAudio } from '../audio/AudioEngi
 import { TICKS_PER_SECOND, formatTicks, ticksToSample, ticksToSeconds } from '../core/AudioTime';
 import { buildEnvelope } from '../core/envelope';
 import { hitTestKey } from '../core/keyboardGeometry';
+import { Window1D, zoomPanWindow } from '../core/pinch';
 import { WindowKind, analyzeRange } from '../core/spectrum';
 import { KeyboardView } from './KeyboardView';
 import { SpectrumView } from './SpectrumView';
+import { TwoFingerGesture } from './gestures';
 import { WaveformView } from './WaveformView';
 import { selectRange, showAbout } from './dialogs';
 import { ICONS, MenuDef, Refreshable, buildMenuBar, buildToolbar } from './menu';
@@ -53,6 +55,9 @@ export class App {
   private readonly wave: WaveformView;
   private readonly spectrum: SpectrumView;
   private readonly keys: KeyboardView;
+  private readonly waveGesture: TwoFingerGesture;
+  private readonly spectrumGesture: TwoFingerGesture;
+  private readonly keysGesture: TwoFingerGesture;
 
   private audio: LoadedAudio | null = null;
   private totalTicks = 0;
@@ -60,6 +65,8 @@ export class App {
   private playbackFrame = 0;
   private autoScroll = true;
   private noteHeld = false;
+  /** A right/middle/Alt drag scrolling the keyboard range, if one is under way. */
+  private keyPanDrag: { pointerId: number; x: number; left: number; count: number; canvas: HTMLCanvasElement } | null = null;
 
   private readonly waveZoom = el<HTMLInputElement>('wave-zoom');
   private readonly wavePan = el<HTMLInputElement>('wave-pan');
@@ -78,6 +85,9 @@ export class App {
     this.spectrum = new SpectrumView(el<HTMLCanvasElement>('spectrum'));
     this.keys = new KeyboardView(el<HTMLCanvasElement>('keys'));
     for (const view of [this.wave, this.spectrum, this.keys]) ignoreTouchClicks(view.canvas);
+    this.waveGesture = this.waveTwoFingerGesture();
+    this.spectrumGesture = this.keyTwoFingerGesture(this.spectrum.canvas);
+    this.keysGesture = this.keyTwoFingerGesture(this.keys.canvas);
 
     this.buildChrome();
     this.wireWaveform();
@@ -396,6 +406,7 @@ export class App {
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
     canvas.addEventListener('pointerdown', (e) => {
+      if (this.waveGesture.down(e)) return; // a second finger: scrolling/zooming, not selecting
       if (!this.hasFile) return;
       canvas.setPointerCapture(e.pointerId);
       if (e.button === 1 || e.button === 2 || e.altKey) {
@@ -410,6 +421,7 @@ export class App {
     });
 
     canvas.addEventListener('pointermove', (e) => {
+      if (this.waveGesture.move(e)) return;
       if (pan) {
         const dx = e.clientX - pan.x;
         this.setWaveView(pan.left - (dx / canvas.clientWidth) * this.wave.span, this.wave.span);
@@ -420,6 +432,7 @@ export class App {
     });
 
     const finish = (e: PointerEvent, commit: boolean) => {
+      if (this.waveGesture.up(e)) return; // a finger of a two-finger gesture lifting: no selection
       if (pan) {
         pan = null;
         canvas.style.cursor = '';
@@ -507,13 +520,61 @@ export class App {
     this.wave.invalidate();
   }
 
+  // ---- two-finger scroll and zoom -------------------------------------------------------
+
+  /**
+   * Two fingers on the waveform scroll and zoom the time axis together: both fingers moving
+   * sideways scrolls, moving apart or together zooms around them. Pointer handlers hand their
+   * events to the gesture first and stand down while it owns them.
+   */
+  private waveTwoFingerGesture(): TwoFingerGesture {
+    let start: Window1D = { left: 0, span: 1 };
+    return new TwoFingerGesture(this.wave.canvas, {
+      begin: () => {
+        // The first finger began a selection drag. Two fingers mean scroll, so drop it uncommitted.
+        this.wave.drag = null;
+        this.wave.invalidate();
+        start = { left: this.wave.left, span: this.wave.span };
+      },
+      update: (pinch) => {
+        if (!this.hasFile) return;
+        const next = zoomPanWindow(start, pinch, {
+          minSpan: this.minSpan,
+          maxSpan: this.totalTicks,
+          lo: 0,
+          hi: this.totalTicks,
+        });
+        this.setWaveView(next.left, next.span);
+      },
+    });
+  }
+
+  /** The spectrum and the keyboard show the same range of notes, so each drives it the same way. */
+  private keyTwoFingerGesture(canvas: HTMLCanvasElement): TwoFingerGesture {
+    let start: Window1D = { left: 0, span: MIDI_NOTES };
+    return new TwoFingerGesture(canvas, {
+      begin: () => {
+        this.releaseNote(); // the first finger pressed a key; two fingers mean scroll, so let it go
+        const { left, right } = this.keys.range;
+        start = { left, span: right - left + 1 };
+      },
+      update: (pinch) => {
+        const next = zoomPanWindow(start, pinch, { minSpan: MIN_KEYS, maxSpan: MIDI_NOTES, lo: 0, hi: MIDI_NOTES });
+        this.setKeyView(next.left, next.span);
+      },
+    });
+  }
+
   // ---- spectrum + keyboard interaction --------------------------------------------------
 
   private wireSpectrum(): void {
     const canvas = this.spectrum.canvas;
 
     // Pressing sounds the note under the pointer, as clicking that key below would.
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('pointerdown', (e) => {
+      if (this.spectrumGesture.down(e)) return;
+      if (this.startKeyPan(e, canvas)) return;
       if (e.button !== 0) return;
       // The graph and the keyboard share one uniform note grid, so any y in the upper half works.
       const rect = canvas.getBoundingClientRect();
@@ -522,9 +583,48 @@ export class App {
       canvas.setPointerCapture(e.pointerId);
       this.pressNote(note);
     });
-    canvas.addEventListener('pointerup', () => this.releaseNote());
-    canvas.addEventListener('pointercancel', () => this.releaseNote());
+    canvas.addEventListener('pointermove', (e) => {
+      if (!this.moveKeyPan(e)) this.spectrumGesture.move(e);
+    });
+    const lift = (e: PointerEvent) => {
+      if (this.endKeyPan(e)) return;
+      if (!this.spectrumGesture.up(e)) this.releaseNote();
+    };
+    canvas.addEventListener('pointerup', lift);
+    canvas.addEventListener('pointercancel', lift);
     this.wireKeyWheel(canvas);
+  }
+
+  /**
+   * Right- or middle-button drag, or Alt-drag, scrolls the keyboard range, as on the waveform.
+   * (Plain left drag is taken: pressing there plays a key.) The spectrum and the keyboard show the
+   * same range, so dragging either scrolls both. Returns true if this press began a pan.
+   */
+  private startKeyPan(e: PointerEvent, canvas: HTMLCanvasElement): boolean {
+    if (e.button !== 1 && e.button !== 2 && !e.altKey) return false;
+    canvas.setPointerCapture(e.pointerId);
+    const { left, right } = this.keys.range;
+    this.keyPanDrag = { pointerId: e.pointerId, x: e.clientX, left, count: right - left + 1, canvas };
+    canvas.style.cursor = 'grabbing';
+    e.preventDefault();
+    return true;
+  }
+
+  /** Measured from where the drag began, so rounding to whole keys never builds up. */
+  private moveKeyPan(e: PointerEvent): boolean {
+    const drag = this.keyPanDrag;
+    if (!drag || e.pointerId !== drag.pointerId) return false;
+    const dx = e.clientX - drag.x;
+    this.setKeyView(drag.left - (dx / drag.canvas.clientWidth) * drag.count, drag.count);
+    return true;
+  }
+
+  private endKeyPan(e: PointerEvent): boolean {
+    const drag = this.keyPanDrag;
+    if (!drag || e.pointerId !== drag.pointerId) return false;
+    drag.canvas.style.cursor = '';
+    this.keyPanDrag = null;
+    return true;
   }
 
   private wireKeyWheel(canvas: HTMLCanvasElement): void {
@@ -554,7 +654,10 @@ export class App {
   private wireKeyboard(): void {
     const canvas = this.keys.canvas;
 
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('pointerdown', (e) => {
+      if (this.keysGesture.down(e)) return;
+      if (this.startKeyPan(e, canvas)) return;
       if (e.button !== 0) return;
       const rect = canvas.getBoundingClientRect();
       const note = hitTestKey(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height, this.keys.range);
@@ -562,8 +665,15 @@ export class App {
       canvas.setPointerCapture(e.pointerId);
       this.pressNote(note);
     });
-    canvas.addEventListener('pointerup', () => this.releaseNote());
-    canvas.addEventListener('pointercancel', () => this.releaseNote());
+    canvas.addEventListener('pointermove', (e) => {
+      if (!this.moveKeyPan(e)) this.keysGesture.move(e);
+    });
+    const lift = (e: PointerEvent) => {
+      if (this.endKeyPan(e)) return;
+      if (!this.keysGesture.up(e)) this.releaseNote();
+    };
+    canvas.addEventListener('pointerup', lift);
+    canvas.addEventListener('pointercancel', lift);
     window.addEventListener('blur', () => this.releaseNote());
     this.wireKeyWheel(canvas);
   }

@@ -14,6 +14,7 @@ import { MU, compandSeries, muLaw, visibleMax } from '../src/core/scaling';
 import { buildEnvelope, mixToMono } from '../src/core/envelope';
 import { ARBITRARY_LENGTH_LIMIT, analyzeRange, hannWindow } from '../src/core/spectrum';
 import { findPeaks } from '../src/core/peaks';
+import { findClump } from '../src/core/clump';
 import { graphSemitoneRange, hitTestKey, keyLeft, keyWidth, noteToFraction } from '../src/core/keyboardGeometry';
 
 describe('AudioTime', () => {
@@ -331,5 +332,76 @@ describe('keyboard geometry', () => {
     expect(hitTestKey(10, 60, W, H, range)).toBe(-1);
     expect(hitTestKey(W, 10, W, H, range)).toBe(108);
     expect(hitTestKey(0, 10, W, H, range)).toBe(21);
+  });
+});
+
+describe('findClump', () => {
+  const quiet = (n: number) => new Float32Array(n).fill(0.01);
+
+  it('returns null for silence and for empty windows', () => {
+    expect(findClump(new Float32Array(100), 0, 100)).toBeNull();
+    expect(findClump(quiet(100), 50, 50)).toBeNull();
+  });
+
+  it('finds a single clump in a quiet window', () => {
+    const env = quiet(1000);
+    env.fill(0.8, 400, 440);
+    const clump = findClump(env, 0, 1000)!;
+    expect(clump.start).toBeGreaterThanOrEqual(395);
+    expect(clump.end).toBeLessThanOrEqual(445);
+    expect(clump.start).toBeLessThan(410);
+    expect(clump.end).toBeGreaterThan(430);
+  });
+
+  it('prefers the clump with more energy', () => {
+    const env = quiet(1000);
+    env.fill(0.5, 100, 130);
+    env.fill(0.9, 600, 660);
+    const clump = findClump(env, 0, 1000)!;
+    expect(clump.start).toBeGreaterThanOrEqual(590);
+    expect(clump.end).toBeLessThanOrEqual(670);
+  });
+
+  it('merges small dips into one clump', () => {
+    const env = quiet(1000);
+    env.fill(0.8, 300, 330);
+    env.fill(0.8, 335, 365);
+    const clump = findClump(env, 0, 1000)!;
+    expect(clump.start).toBeLessThan(310);
+    expect(clump.end).toBeGreaterThan(355);
+  });
+
+  it('narrows a clump that fills the window to about a third of it', () => {
+    const env = new Float32Array(1000).fill(0.7);
+    const clump = findClump(env, 0, 1000)!;
+    expect(clump.end - clump.start).toBe(350);
+    expect(clump.start).toBeGreaterThanOrEqual(0);
+    expect(clump.end).toBeLessThanOrEqual(1000);
+  });
+
+  it('widens a sliver to a draggable width', () => {
+    const env = quiet(1000);
+    env[500] = 1;
+    const clump = findClump(env, 0, 1000)!;
+    expect(clump.end - clump.start).toBe(50);
+    expect(clump.start).toBeLessThanOrEqual(500);
+    expect(clump.end).toBeGreaterThan(500);
+  });
+
+  it('only looks inside the requested window', () => {
+    const env = quiet(1000);
+    env.fill(1, 100, 200);
+    env.fill(0.4, 700, 760);
+    const clump = findClump(env, 600, 900)!;
+    expect(clump.start).toBeGreaterThanOrEqual(600);
+    expect(clump.end).toBeLessThanOrEqual(900);
+  });
+
+  it('stays inside the window when the clump touches its edge', () => {
+    const env = quiet(1000);
+    env.fill(0.9, 0, 3);
+    const clump = findClump(env, 0, 1000)!;
+    expect(clump.start).toBeGreaterThanOrEqual(0);
+    expect(clump.end - clump.start).toBe(50);
   });
 });

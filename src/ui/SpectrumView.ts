@@ -34,7 +34,7 @@ export class SpectrumView extends CanvasView {
   protected paint(ctx: CanvasRenderingContext2D, w: number, h: number): void {
     const s = this.spectrum;
     if (!s) {
-      if (this.hasFile) this.drawHint(ctx, w, h, 'Drag across the waveform to select a range');
+      if (this.hasFile) this.drawPrompt(ctx, w, h);
       return;
     }
 
@@ -109,11 +109,34 @@ export class SpectrumView extends CanvasView {
     }
   }
 
-  private drawHint(ctx: CanvasRenderingContext2D, w: number, h: number, text: string): void {
+  /** Empty state once a file is open: an up arrow toward the waveform, and what to do there. */
+  private drawPrompt(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+    const arrow = h >= 120;
+    const top = h / 2 - (arrow ? 40 : 20);
+    const cx = w / 2;
+    let y = top;
+    ctx.fillStyle = COLORS.hint;
+    ctx.strokeStyle = COLORS.hint;
+    if (arrow) {
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx, y + 24);
+      ctx.lineTo(cx, y);
+      ctx.moveTo(cx - 9, y + 9);
+      ctx.lineTo(cx, y);
+      ctx.lineTo(cx + 9, y + 9);
+      ctx.stroke();
+      y += 40;
+    }
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.font = `600 17px ${UI_FONT}`;
+    ctx.fillStyle = '#4a4f58';
+    ctx.fillText('Select part of the waveform', cx, y);
     ctx.font = `14px ${UI_FONT}`;
     ctx.fillStyle = COLORS.hint;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, w / 2, h / 2);
+    ctx.fillText('to see which notes are playing', cx, y + 24);
   }
 }

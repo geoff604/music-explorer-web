@@ -215,6 +215,7 @@ export class App {
       this.wave.selection = null;
       this.wave.drag = null;
       this.wave.playhead = null;
+      this.wave.introStart = performance.now();
       this.wave.extent = 1;
       this.spectrum.spectrum = null;
       this.spectrum.hasFile = true;

@@ -18,6 +18,7 @@ const DEFAULT_SPAN_TICKS = 3 * TICKS_PER_SECOND; // the original opens showing 3
 const MIN_SPAN_TICKS = 8;
 const VERTICAL_ZOOM_STEP = 1.4;
 const MIN_EXTENT = 0.01;
+const ZOOM_BUTTON_FACTOR = 1.5; // view span / key count changes by this much per click
 const AUTO_SCROLL_MARGIN = 0.05; // fraction of the view left before the playhead after a page turn
 
 function el<T extends HTMLElement>(id: string): T {
@@ -259,15 +260,16 @@ export class App {
   private syncWaveBars(): void {
     const on = this.hasFile && this.totalTicks > this.minSpan;
     this.waveZoom.disabled = !on;
+    for (const b of document.querySelectorAll<HTMLButtonElement>('#wave-bars .zoom-btn')) b.disabled = !on;
     this.wavePan.disabled = !on;
     if (!this.hasFile) {
-      this.waveZoom.value = this.wavePan.value = '0';
+      this.setZoomSlider(this.waveZoom, 0, 1000, 0);
+      this.wavePan.value = '0';
       return;
     }
-    this.waveZoom.min = '0';
-    this.waveZoom.max = '1000';
     this.waveZoom.step = '1';
-    this.waveZoom.value = String(Math.round(this.spanToSlider(this.wave.span) * 1000));
+    // Right = zoom in, so the slider runs opposite to the span.
+    this.setZoomSlider(this.waveZoom, 0, 1000, Math.round((1 - this.spanToSlider(this.wave.span)) * 1000));
     this.wavePan.min = '0';
     this.wavePan.max = String(Math.max(0, this.totalTicks - this.wave.span));
     this.wavePan.step = '1';
@@ -289,10 +291,9 @@ export class App {
     const range = { left: l, right: l + n - 1 };
     this.keys.range = range;
     this.spectrum.range = range;
-    this.keyZoom.min = String(MIN_KEYS);
-    this.keyZoom.max = String(MIDI_NOTES);
+    // Right = zoom in = fewer keys.
     this.keyZoom.step = '1';
-    this.keyZoom.value = String(n);
+    this.setZoomSlider(this.keyZoom, 0, MIDI_NOTES - MIN_KEYS, MIDI_NOTES - n);
     this.keyPan.min = '0';
     this.keyPan.max = String(MIDI_NOTES - n);
     this.keyPan.step = '1';
@@ -302,19 +303,45 @@ export class App {
     this.spectrum.invalidate();
   }
 
+  private setZoomSlider(input: HTMLInputElement, min: number, max: number, value: number): void {
+    input.min = String(min);
+    input.max = String(max);
+    input.value = String(value);
+    input.style.setProperty('--fill', String(max > min ? (value - min) / (max - min) : 0));
+  }
+
+  private zoomWave(factor: number): void {
+    // Keep the centre of the view fixed while zooming.
+    const centre = this.wave.left + this.wave.span / 2;
+    const span = this.wave.span * factor;
+    this.setWaveView(centre - span / 2, span);
+  }
+
+  private zoomKeys(factor: number): void {
+    const { left, right } = this.keys.range;
+    const count = right - left + 1;
+    let next = count * factor;
+    // Small factors would round back to the same count and get stuck.
+    if (Math.round(next) === count) next = count + Math.sign(factor - 1);
+    this.setKeyView(left + count / 2 - next / 2, next);
+  }
+
   private wireBars(): void {
+    for (const b of document.querySelectorAll<HTMLButtonElement>('.zoom-btn')) {
+      const zoomIn = b.dataset.zoom === 'in';
+      b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${zoomIn ? ICONS.magnifyIn : ICONS.magnifyOut}</svg>`;
+      const factor = zoomIn ? 1 / ZOOM_BUTTON_FACTOR : ZOOM_BUTTON_FACTOR;
+      const wave = b.closest('#wave-bars') !== null;
+      b.addEventListener('click', () => (wave ? this.zoomWave(factor) : this.zoomKeys(factor)));
+    }
     this.waveZoom.addEventListener('input', () => {
-      // Keep the centre of the view fixed while zooming with the slider.
-      const centre = this.wave.left + this.wave.span / 2;
-      const span = this.sliderToSpan(Number(this.waveZoom.value) / 1000);
-      this.setWaveView(centre - span / 2, span);
+      const span = this.sliderToSpan(1 - Number(this.waveZoom.value) / 1000);
+      this.zoomWave(span / this.wave.span);
     });
     this.wavePan.addEventListener('input', () => this.setWaveView(Number(this.wavePan.value), this.wave.span));
     this.keyZoom.addEventListener('input', () => {
-      const { left, right } = this.keys.range;
-      const centre = (left + right + 1) / 2;
-      const count = Number(this.keyZoom.value);
-      this.setKeyView(centre - count / 2, count);
+      const count = MIDI_NOTES - Number(this.keyZoom.value);
+      this.zoomKeys(count / (this.keys.range.right - this.keys.range.left + 1));
     });
     this.keyPan.addEventListener('input', () => this.setKeyView(Number(this.keyPan.value), this.keys.range.right - this.keys.range.left + 1));
   }

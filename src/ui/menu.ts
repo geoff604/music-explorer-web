@@ -180,5 +180,9 @@ export const ICONS = {
   stop: '<rect x="6" y="6" width="12" height="12" rx="1"/>',
   zoomIn: '<path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>',
   zoomOut: '<path d="M5 11h14v2H5z"/>',
+  magnifyOut:
+    '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="10" r="6.5"/><path d="M15 15l6 6M7 10h6"/></g>',
+  magnifyIn:
+    '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="10" r="6.5"/><path d="M15 15l6 6M7 10h6M10 7v6"/></g>',
   help: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 16h-2v-2h2zm2.1-7.7-.9.9c-.7.7-1.2 1.3-1.2 2.8h-2v-.5c0-1.1.5-2.1 1.2-2.8l1.2-1.3c.4-.3.6-.8.6-1.4 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.2 1.8-4 4-4s4 1.8 4 4c0 .9-.4 1.7-.9 2.3z"/>',
 } as const;

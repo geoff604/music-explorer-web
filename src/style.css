@@ -255,16 +255,16 @@ body {
   z-index: 5;
 }
 
-/* zoom on the left third, position on the right two thirds, as in the original */
+/* zoom control at a fixed width on the left, position scrollbar taking the rest */
 .bars {
   display: grid;
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: 170px 1fr;
   gap: 1px;
   background: var(--chrome-line);
   border-block: 1px solid var(--chrome-line);
 }
 
-.bars input[type='range'] {
+.bars > input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
@@ -273,15 +273,15 @@ body {
   background: var(--chrome-bg);
   cursor: default;
 }
-.bars input[type='range']::-webkit-slider-runnable-track {
+.bars > input[type='range']::-webkit-slider-runnable-track {
   height: 18px;
   background: transparent;
 }
-.bars input[type='range']::-moz-range-track {
+.bars > input[type='range']::-moz-range-track {
   height: 18px;
   background: transparent;
 }
-.bars input[type='range']::-webkit-slider-thumb {
+.bars > input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 34px;
   height: 14px;
@@ -290,25 +290,124 @@ body {
   background: var(--chrome-dim);
   border: 0;
 }
-.bars input[type='range']::-moz-range-thumb {
+.bars > input[type='range']::-moz-range-thumb {
   width: 34px;
   height: 14px;
   border-radius: 3px;
   background: var(--chrome-dim);
   border: 0;
 }
-.bars input[type='range']:hover::-webkit-slider-thumb {
+.bars > input[type='range']:hover::-webkit-slider-thumb {
   background: var(--accent);
 }
-.bars input[type='range']:hover::-moz-range-thumb {
+.bars > input[type='range']:hover::-moz-range-thumb {
   background: var(--accent);
 }
-.bars input[type='range']:focus-visible {
+.bars > input[type='range']:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
-.bars input[type='range']:disabled {
+.bars > input[type='range']:disabled {
   opacity: 0.4;
+}
+
+/* zoom control: [magnifier-] ---o--- [magnifier+], right = zoom in */
+.zoom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  background: var(--chrome-bg);
+  color: var(--chrome-dim);
+}
+.zoom-btn {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.zoom-btn:hover:not(:disabled) {
+  background: var(--chrome-hover);
+  color: var(--chrome-fg);
+}
+.zoom-btn:active:not(:disabled) {
+  background: var(--chrome-active);
+}
+.zoom-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.zoom-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.zoom-btn svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.zoom input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 18px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  --fill: 0; /* 0..1, set from script */
+}
+.zoom input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background:
+    linear-gradient(var(--accent), var(--accent)) 0 0 / calc(7px + var(--fill) * (100% - 14px)) 100% no-repeat,
+    var(--chrome-line);
+}
+.zoom input[type='range']::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--chrome-line);
+}
+.zoom input[type='range']::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.zoom input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  border: 1px solid var(--chrome-dim);
+  background: var(--chrome-bg);
+}
+.zoom input[type='range']::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid var(--chrome-dim);
+  background: var(--chrome-bg);
+}
+.zoom input[type='range']:hover::-webkit-slider-thumb {
+  border-color: var(--accent);
+}
+.zoom input[type='range']:hover::-moz-range-thumb {
+  border-color: var(--accent);
+}
+.zoom input[type='range']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.zoom input[type='range']:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* ---- status bar ----------------------------------------------------------------------- */

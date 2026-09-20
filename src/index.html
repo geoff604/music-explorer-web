@@ -24,13 +24,21 @@
       <main id="panes" class="panes">
         <canvas id="wave" class="pane wave" aria-label="Waveform. Drag to select a range."></canvas>
         <div class="bars" id="wave-bars">
-          <input id="wave-zoom" type="range" aria-label="Waveform zoom" title="Waveform zoom" />
+          <div class="zoom" role="group" aria-label="Waveform zoom">
+            <button type="button" class="zoom-btn" data-zoom="out" aria-label="Zoom out" title="Zoom out"></button>
+            <input id="wave-zoom" type="range" aria-label="Waveform zoom" title="Zoom in / Zoom out" />
+            <button type="button" class="zoom-btn" data-zoom="in" aria-label="Zoom in" title="Zoom in"></button>
+          </div>
           <input id="wave-pan" type="range" aria-label="Waveform position" title="Waveform position" />
         </div>
         <canvas id="spectrum" class="pane spectrum" aria-label="Frequency spectrum of the selection"></canvas>
         <canvas id="keys" class="pane keys" aria-label="Piano keyboard. Press a key to hear it."></canvas>
         <div class="bars" id="key-bars">
-          <input id="key-zoom" type="range" aria-label="Keyboard zoom" title="Number of keys shown" />
+          <div class="zoom" role="group" aria-label="Keyboard zoom">
+            <button type="button" class="zoom-btn" data-zoom="out" aria-label="Zoom out" title="Zoom out"></button>
+            <input id="key-zoom" type="range" aria-label="Keyboard zoom" title="Zoom in / Zoom out" />
+            <button type="button" class="zoom-btn" data-zoom="in" aria-label="Zoom in" title="Zoom in"></button>
+          </div>
           <input id="key-pan" type="range" aria-label="Keyboard position" title="Keyboard position" />
         </div>
       </main>

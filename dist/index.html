@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Music Explorer</title>
+    <meta
+      name="description"
+      content="See which notes are playing in a clip of music. Select part of a recording and its spectrum appears above a piano keyboard."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230000ff'/%3E%3Cpath d='M4 16h3l2-8 3 16 3-12 2 6 2-4h9' stroke='%23fff' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"
+    />
+    <script type="module" crossorigin src="./assets/index-Dq2jds3V.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-C2GKJLAr.css">
+  </head>
+  <body>
+    <div id="app">
+      <header class="chrome">
+        <nav id="menubar" class="menubar" aria-label="Main menu"></nav>
+        <div id="toolbar" class="toolbar" role="toolbar" aria-label="Toolbar"></div>
+      </header>
+
+      <main id="panes" class="panes">
+        <canvas id="wave" class="pane wave" aria-label="Waveform. Drag to select a range."></canvas>
+        <div class="bars" id="wave-bars">
+          <input id="wave-zoom" type="range" aria-label="Waveform zoom" title="Waveform zoom" />
+          <input id="wave-pan" type="range" aria-label="Waveform position" title="Waveform position" />
+        </div>
+        <canvas id="spectrum" class="pane spectrum" aria-label="Frequency spectrum of the selection"></canvas>
+        <canvas id="keys" class="pane keys" aria-label="Piano keyboard. Press a key to hear it."></canvas>
+        <div class="bars" id="key-bars">
+          <input id="key-zoom" type="range" aria-label="Keyboard zoom" title="Number of keys shown" />
+          <input id="key-pan" type="range" aria-label="Keyboard position" title="Keyboard position" />
+        </div>
+      </main>
+
+      <footer class="statusbar">
+        <span id="status-msg" role="status" aria-live="polite">Ready</span>
+        <span id="status-note" aria-live="polite"></span>
+      </footer>
+    </div>
+
+    <input id="file" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.oga,.opus,.flac" hidden />
+
+    <dialog id="range-dialog" aria-labelledby="range-title">
+      <form method="dialog" id="range-form">
+        <h2 id="range-title">Select Range</h2>
+        <p class="dlg-file"><span id="range-file">No file open</span> <span class="dim">· Length <output id="range-length">00:00:00:00</output></span></p>
+        <table class="range-grid">
+          <thead>
+            <tr><th></th><th>Hours</th><th>Min</th><th>Sec</th><th>Frames <span class="dim">(0–29)</span></th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Start time</th>
+              <td><input name="sh" type="number" min="0" max="32767" step="1" required /></td>
+              <td><input name="sm" type="number" min="0" max="59" step="1" required /></td>
+              <td><input name="ss" type="number" min="0" max="59" step="1" required /></td>
+              <td><input name="sf" type="number" min="0" max="29" step="1" required /></td>
+            </tr>
+            <tr>
+              <th scope="row">End time</th>
+              <td><input name="eh" type="number" min="0" max="32767" step="1" required /></td>
+              <td><input name="em" type="number" min="0" max="59" step="1" required /></td>
+              <td><input name="es" type="number" min="0" max="59" step="1" required /></td>
+              <td><input name="ef" type="number" min="0" max="29" step="1" required /></td>
+            </tr>
+          </tbody>
+        </table>
+        <p id="range-error" class="dlg-error" role="alert" hidden></p>
+        <div class="dlg-buttons">
+          <button type="button" id="range-cancel">Cancel</button>
+          <button type="submit" id="range-ok" class="primary">OK</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="about-dialog" aria-labelledby="about-title">
+      <form method="dialog">
+        <h2 id="about-title">About Music Explorer</h2>
+        <p><strong>Music Explorer</strong> · Version 2.0</p>
+        <p>
+          Created by Geoff Peters and Gabriel Lo. Originally a Windows program from 2003 (C++/MFC);
+          this is a port to the browser.
+        </p>
+        <p>
+          Open a recording, drag across the waveform to select a moment, and the spikes that appear
+          above the piano keyboard show which notes are sounding. Press a key to hear its pitch and
+          match it against a spike.
+        </p>
+        <p>
+          Your audio never leaves this page; files are decoded and analysed locally.
+        </p>
+        <p>
+          Free software, released under the
+          <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GNU General Public License</a>,
+          version 3 or (at your option) any later version.
+        </p>
+        <div class="dlg-buttons"><button class="primary" autofocus>OK</button></div>
+      </form>
+    </dialog>
+
+  </body>
+</html>

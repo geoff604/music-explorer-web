@@ -801,15 +801,26 @@ export class App {
       } else if (mod && key === 'u') {
         e.preventDefault();
         this.verticalZoom(-1);
-      } else if (e.key === ' ' && !mod) {
-        // Leave Space alone where it already means something (buttons, sliders, fields).
-        const t = e.target as HTMLElement;
-        if (t === document.body || t instanceof HTMLCanvasElement) {
-          e.preventDefault();
-          if (this.engine.isPlaying) this.engine.stop();
-          else void this.play();
-        }
+      } else if (e.key === ' ' && !mod && this.spaceTogglesPlayback(e)) {
+        e.preventDefault();
+        if (this.engine.isPlaying) this.engine.stop();
+        else void this.play();
       }
     });
+    // A focused button is clicked by Space on key-up, so cancel that too or it would fire as well.
+    window.addEventListener('keyup', (e) => {
+      if (e.key === ' ' && this.spaceTogglesPlayback(e)) e.preventDefault();
+    });
+  }
+
+  /**
+   * Space always starts/stops playback, even with a zoom button or scroll bar focused from a
+   * click. It is left alone only where it does something of its own: the menus and text fields.
+   */
+  private spaceTogglesPlayback(e: KeyboardEvent): boolean {
+    const t = e.target;
+    if (!(t instanceof HTMLElement)) return true;
+    if (t.closest('#menubar')) return false;
+    return !(t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement || (t instanceof HTMLInputElement && t.type !== 'range'));
   }
 }

@@ -636,6 +636,15 @@ dialog a {
   display: none;
 }
 
+/* On a small touch screen the spectrum/keyboard zoom+position bar is redundant (pinch and drag
+   pan/zoom the panes) and it sits where the on-screen keyboard and the bottom of the page compete
+   for space. Hide it; its auto-sized grid row collapses to nothing. The waveform's bar stays. */
+@media (pointer: coarse) and (hover: none) and (max-width: 900px), (pointer: coarse) and (hover: none) and (max-height: 500px) {
+  #key-bars {
+    display: none;
+  }
+}
+
 @media (max-width: 520px) {
   .toolbar {
     padding-inline: 6px;

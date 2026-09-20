@@ -355,11 +355,29 @@ export class App {
     input.style.setProperty('--fill', String(max > min ? (value - min) / (max - min) : 0));
   }
 
+  /**
+   * The tick a button or slider zoom pivots on: the playhead, else the visible part of the
+   * selection (or the cursor, which is an empty selection), else the middle of the view. Whatever
+   * is chosen stays where it is on screen, so it cannot be zoomed out of view.
+   */
+  private zoomAnchor(): number {
+    const { left, span, playhead, selection: sel } = this.wave;
+    const right = left + span;
+    if (playhead !== null && playhead >= left && playhead <= right) return playhead;
+    if (sel) {
+      const lo = Math.max(sel.start, left);
+      const hi = Math.min(sel.end, right);
+      if (lo <= hi) return (lo + hi) / 2;
+    }
+    return left + span / 2;
+  }
+
   private zoomWave(factor: number): void {
-    // Keep the centre of the view fixed while zooming.
-    const centre = this.wave.left + this.wave.span / 2;
-    const span = this.wave.span * factor;
-    this.setWaveView(centre - span / 2, span);
+    const { left, span: oldSpan } = this.wave;
+    const anchor = this.zoomAnchor();
+    const fraction = (anchor - left) / oldSpan;
+    const span = oldSpan * factor;
+    this.setWaveView(anchor - fraction * span, span);
   }
 
   private zoomKeys(factor: number): void {

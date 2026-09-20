@@ -33,20 +33,19 @@ Your audio never leaves the page: files are decoded and analysed locally.
    exact SMPTE times (`hours:minutes:seconds:frames`, 30 frames per second).
 3. **Read the spectrum.** Spikes over the piano keys are the notes present. Small labels name the
    strongest peaks.
-4. **Press a piano key** and hold it to hear that pitch. The status bar shows its MIDI number and
-   name, e.g. `60 (C4)`.
+4. **Press a piano key**, or click anywhere on the spectrum, and hold it to hear that pitch. Its MIDI
+   number and name, e.g. `Key Pressed: 60 (C4)`, appear in the top left corner of the spectrum.
 5. **Play** the selection (`Space`). With no selection it plays from the start point to the end.
 
-| Control | Action |
-|---|---|
-| Wheel over the waveform | Zoom time, around the cursor |
-| Shift + wheel, or middle/right/Alt-drag | Pan time |
-| Wheel over the spectrum or keyboard | Zoom the keyboard range |
-| Shift + wheel, or middle/right/Alt-drag on the spectrum or keyboard | Pan the keyboard range |
-| `Ctrl+I` / `Ctrl+U` | Vertical zoom in / out on the waveform |
-| Sliders under each pane | Left third zooms, right two thirds pans |
-| Two-finger drag on a pane (touch) | Scroll the waveform, or the keyboard range on the spectrum and keyboard |
-| Pinch on a pane (touch) | Zoom in or out around your fingers; scrolling and zooming can happen together |
+### Controls
+
+- Select a part of the waveform by clicking and dragging, to analyze what notes are in that section
+  of music.
+- Zoom in and out with the zoom controls or your mouse wheel.
+- Pan left and right with the scroll bars, or by right-clicking and dragging.
+- On a phone or tablet, drag with two fingers to pan and pinch with two fingers to zoom.
+- Use the space bar to start and stop the audio.
+- To zoom the waveform vertically in or out, use the top toolbar.
 
 *View → Window* switches between a **Hann** window (default; sharper peaks) and the original's
 **rectangular** window.
@@ -91,12 +90,15 @@ npm run build      # typecheck + production build into dist/
 
 The build is a static site (`base: './'`), so `dist/` can be served from any path.
 
-To try it on a phone, run `npm run dev:phone` and open the address it prints (the `Network` one) on a
-phone on the same network. Use this rather than `npm run dev`: the normal dev page reloads itself
-whenever its connection to the dev server drops, and a phone drops it when the tab goes to the
-background, which is what opening the file picker does. So with plain `dev`, choosing a file can
-reload the page instead. The cost is that `dev:phone` has no live reload; refresh by hand after an
-edit. Over plain `http` the piano tone uses a fallback, because `AudioWorklet` needs https.
+To test on a phone, run `npm run dev:phone` and open the `Network` address it prints on a phone
+that is on the same network.
+
+Use `dev:phone` instead of `npm run dev` for this. On a phone, opening the file picker sends the
+browser tab to the background and drops its connection to the dev server, which makes the normal dev
+page reload itself, so choosing a file would reload the page. `dev:phone` avoids that, but has no
+live reload: refresh the page by hand after each edit.
+
+Over plain `http`, the piano tone uses a fallback because `AudioWorklet` requires `https`.
 
 The analysis code is in `src/core/` and has no DOM dependencies, so it is fully unit-tested; the
 canvas views and controller are in `src/ui/`, and playback and the tone generator in `src/audio/`.

@@ -23,6 +23,10 @@
 
       <main id="panes" class="panes">
         <canvas id="wave" class="pane wave" aria-label="Waveform. Drag to select a range."></canvas>
+        <div id="empty-state" class="empty-state">
+          <button type="button" id="open-button">Open an audio file</button>
+          <p>or drop one here</p>
+        </div>
         <div class="bars" id="wave-bars">
           <div class="zoom" role="group" aria-label="Waveform zoom">
             <button type="button" class="zoom-btn" data-zoom="out" aria-label="Zoom out" title="Zoom out"></button>

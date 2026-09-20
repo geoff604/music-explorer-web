@@ -229,6 +229,7 @@ body {
   -webkit-user-select: none;
 }
 .pane.wave {
+  grid-area: 1 / 1; /* shares its cell with .empty-state, so both are placed explicitly */
   cursor: crosshair;
 }
 .pane.spectrum {
@@ -239,6 +240,44 @@ body {
 }
 .pane.keys {
   cursor: pointer;
+}
+/* Shown over the waveform until a file is open. The panes stay white in both themes, so these
+   colours are fixed rather than taken from the chrome variables. */
+.empty-state {
+  grid-area: 1 / 1;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none; /* let the canvas underneath keep the pointer */
+}
+.empty-state[hidden] {
+  display: none;
+}
+.empty-state button {
+  pointer-events: auto;
+  font: inherit;
+  font-size: 15px;
+  padding: 8px 20px;
+  border: 0;
+  border-radius: 6px;
+  background: #0b4fd6;
+  color: #fff;
+  cursor: pointer;
+}
+.empty-state button:hover {
+  background: #0a44b8;
+}
+.empty-state button:focus-visible {
+  outline: 2px solid #0b4fd6;
+  outline-offset: 2px;
+}
+.empty-state p {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7079;
 }
 .panes.drop::after {
   content: 'Drop an audio file to open it';

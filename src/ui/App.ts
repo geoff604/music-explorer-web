@@ -54,6 +54,7 @@ export class App {
   private readonly statusMsg = el<HTMLElement>('status-msg');
   private readonly statusNote = el<HTMLElement>('status-note');
   private readonly fileInput = el<HTMLInputElement>('file');
+  private readonly emptyState = el<HTMLElement>('empty-state');
 
   private readonly chrome: Refreshable[] = [];
 
@@ -172,6 +173,7 @@ export class App {
   // ---- opening files --------------------------------------------------------------------
 
   private wireFileInput(): void {
+    el('open-button').addEventListener('click', () => this.fileInput.click());
     this.fileInput.addEventListener('change', () => {
       const file = this.fileInput.files?.[0];
       this.fileInput.value = ''; // so choosing the same file again still fires
@@ -207,6 +209,7 @@ export class App {
       const envelope = buildEnvelope(audio.mono, audio.sampleRate);
 
       this.audio = audio;
+      this.emptyState.hidden = true;
       this.totalTicks = envelope.length;
       this.wave.envelope = envelope;
       this.wave.selection = null;

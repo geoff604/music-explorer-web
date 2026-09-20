@@ -39,14 +39,7 @@ export class WaveformView extends CanvasView {
 
   protected paint(ctx: CanvasRenderingContext2D, w: number, h: number): void {
     const env = this.envelope;
-    if (!env) {
-      ctx.font = `14px ${UI_FONT}`;
-      ctx.fillStyle = COLORS.hint;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('Open an audio file to begin (Ctrl+O), or drop one here', w / 2, h / 2);
-      return;
-    }
+    if (!env) return; // the page shows an Open button over the empty pane
 
     const zero = h / 2;
     ctx.fillStyle = COLORS.wave;

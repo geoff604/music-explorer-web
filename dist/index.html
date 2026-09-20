@@ -13,8 +13,8 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230000ff'/%3E%3Cpath d='M4 16h3l2-8 3 16 3-12 2 6 2-4h9' stroke='%23fff' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"
     />
-    <script type="module" crossorigin src="./assets/index-B7sNFJEC.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-ssDZpTyV.css">
+    <script type="module" crossorigin src="./assets/index-DD4m55JQ.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CVe9h9ol.css">
   </head>
   <body>
     <div id="app">
@@ -24,10 +24,12 @@
       </header>
 
       <main id="panes" class="panes">
-        <canvas id="wave" class="pane wave" aria-label="Waveform. Drag to select a range."></canvas>
-        <div id="empty-state" class="empty-state">
-          <button type="button" id="open-button">Open an audio file</button>
-          <p>or drop one here</p>
+        <div class="cell cell-wave">
+          <canvas id="wave" class="pane wave" aria-label="Waveform. Drag to select a range."></canvas>
+          <div id="empty-state" class="empty-state">
+            <button type="button" id="open-button">Open an audio file</button>
+            <p>or drop one here</p>
+          </div>
         </div>
         <div class="bars" id="wave-bars">
           <div class="zoom" role="group" aria-label="Waveform zoom">
@@ -37,8 +39,12 @@
           </div>
           <input id="wave-pan" type="range" aria-label="Waveform position" title="Waveform position" />
         </div>
-        <canvas id="spectrum" class="pane spectrum" aria-label="Frequency spectrum of the selection. Click to hear a note."></canvas>
-        <canvas id="keys" class="pane keys" aria-label="Piano keyboard. Press a key to hear it."></canvas>
+        <div class="cell cell-spectrum">
+          <canvas id="spectrum" class="pane spectrum" aria-label="Frequency spectrum of the selection. Click to hear a note."></canvas>
+        </div>
+        <div class="cell cell-keys">
+          <canvas id="keys" class="pane keys" aria-label="Piano keyboard. Press a key to hear it."></canvas>
+        </div>
         <div class="bars" id="key-bars">
           <div class="zoom" role="group" aria-label="Keyboard zoom">
             <button type="button" class="zoom-btn" data-zoom="out" aria-label="Zoom out" title="Zoom out"></button>

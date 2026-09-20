@@ -1,4 +1,4 @@
-import { AudioEngine, LoadedAudio } from '../audio/AudioEngine';
+import { AudioEngine, AudioEngineOptions, LoadedAudio } from '../audio/AudioEngine';
 import { TICKS_PER_SECOND, formatTicks, ticksToSample, ticksToSeconds } from '../core/AudioTime';
 import { buildEnvelope } from '../core/envelope';
 import { hitTestKey } from '../core/keyboardGeometry';
@@ -19,6 +19,9 @@ const VERTICAL_ZOOM_STEP = 1.4;
 const MIN_EXTENT = 0.01;
 const ZOOM_BUTTON_FACTOR = 1.5; // view span / key count changes by this much per click
 const AUTO_SCROLL_MARGIN = 0.05; // fraction of the view left before the playhead after a page turn
+const MAX_ERRORS = 5; // how many recent errors the debug readout keeps
+
+const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
 function el<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
@@ -28,6 +31,17 @@ function el<T extends HTMLElement>(id: string): T {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
+/**
+ * A touch tap makes the browser fire a click as well, and mobile browsers retarget that click to
+ * the nearest control within reach of the finger. The keyboard is only 50px tall with the zoom/pan
+ * sliders directly beneath it, so tapping the lower part of the keys clicked the slider and
+ * jumped the keyboard's position. Cancelling touchend stops that click being generated. The
+ * canvases work from pointer events, which are unaffected.
+ */
+function ignoreTouchClicks(canvas: HTMLCanvasElement): void {
+  canvas.addEventListener('touchend', (e) => e.preventDefault(), { passive: false });
+}
+
 /** Wheel deltas normalised to pixels. */
 function wheelDelta(e: WheelEvent): { x: number; y: number } {
   const k = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
@@ -35,7 +49,7 @@ function wheelDelta(e: WheelEvent): { x: number; y: number } {
 }
 
 export class App {
-  private readonly engine = new AudioEngine();
+  private readonly engine: AudioEngine;
   private readonly wave: WaveformView;
   private readonly spectrum: SpectrumView;
   private readonly keys: KeyboardView;
@@ -56,11 +70,14 @@ export class App {
   private readonly emptyState = el<HTMLElement>('empty-state');
 
   private readonly chrome: Refreshable[] = [];
+  private readonly errors: string[] = [];
 
-  constructor() {
+  constructor(audioOptions?: AudioEngineOptions) {
+    this.engine = new AudioEngine(audioOptions);
     this.wave = new WaveformView(el<HTMLCanvasElement>('wave'));
     this.spectrum = new SpectrumView(el<HTMLCanvasElement>('spectrum'));
     this.keys = new KeyboardView(el<HTMLCanvasElement>('keys'));
+    for (const view of [this.wave, this.spectrum, this.keys]) ignoreTouchClicks(view.canvas);
 
     this.buildChrome();
     this.wireWaveform();
@@ -69,6 +86,7 @@ export class App {
     this.wireBars();
     this.wireFileInput();
     this.wireShortcuts();
+    this.wireAudioUnlock();
 
     this.engine.onEnded = () => this.playbackEnded();
     this.setKeyView(DEFAULT_KEY_LEFT, DEFAULT_KEY_COUNT);
@@ -164,9 +182,20 @@ export class App {
     for (const c of this.chrome) c.refresh();
   }
 
-  private setStatus(message: string, isError = false): void {
+  private setStatus(message: string, isError = false, detail?: string): void {
     this.statusMsg.textContent = message;
     this.statusMsg.style.color = isError ? 'var(--error)' : '';
+    if (isError) {
+      // The status bar cuts long text off, so keep the whole message (and the underlying cause,
+      // which the bar does not show) for the `?debug` readout.
+      this.errors.push(detail ? `${message} [${detail}]` : message);
+      if (this.errors.length > MAX_ERRORS) this.errors.shift();
+    }
+  }
+
+  /** Errors shown so far, for the `?debug` readout. */
+  debugErrors(): string[] {
+    return this.errors;
   }
 
   // ---- opening files --------------------------------------------------------------------
@@ -226,8 +255,8 @@ export class App {
       // No sample rate here: decodeAudioData resamples to the audio context's rate, so what we
       // hold is not the file's own rate and quoting it would mislead.
       this.setStatus(`${audio.name} · ${formatTicks(this.totalTicks)}`);
-    } catch {
-      this.setStatus(`Unable to open ${file.name}: this browser could not decode it as audio.`, true);
+    } catch (e) {
+      this.setStatus(`Unable to open ${file.name}: this browser could not decode it as audio.`, true, errorText(e));
     }
     this.spectrum.invalidate();
     this.refreshChrome();
@@ -546,7 +575,30 @@ export class App {
     this.spectrum.pressed = note;
     this.spectrum.invalidate();
     this.keys.invalidate();
-    void this.engine.noteOn(note);
+    this.engine.noteOn(note).catch((e: unknown) => {
+      this.setStatus(`Could not play the note: ${errorText(e)}`, true);
+    });
+  }
+
+  /**
+   * Browsers only start audio after a user gesture, and on touch screens a press does not count
+   * until it is released. Unlock on the first release/click/key, so a key pressed afterwards has a
+   * running audio context waiting for it. Stops listening once the context is running.
+   */
+  private wireAudioUnlock(): void {
+    const events = ['pointerup', 'touchend', 'click', 'keydown'];
+    const onGesture = () => {
+      void this.engine.unlock().then((running) => {
+        if (!running) return; // try again on the next gesture
+        for (const type of events) window.removeEventListener(type, onGesture, true);
+      });
+    };
+    for (const type of events) window.addEventListener(type, onGesture, { capture: true, passive: true });
+  }
+
+  /** Audio state and recent audio events, for the `?debug` readout. */
+  audioDebugLines(): string[] {
+    return this.engine.debugLines();
   }
 
   private releaseNote(): void {
@@ -567,7 +619,13 @@ export class App {
     const start = sel?.start ?? 0;
     // No selection (or an empty one) plays from the start point to the end of the file.
     const end = sel && sel.end > sel.start ? sel.end : start;
-    await this.engine.play(ticksToSeconds(start), ticksToSeconds(end));
+    try {
+      await this.engine.play(ticksToSeconds(start), ticksToSeconds(end));
+    } catch (e) {
+      this.setStatus(`Could not play: ${errorText(e)}`, true);
+      this.refreshChrome();
+      return;
+    }
     this.trackPlayhead();
     this.refreshChrome();
   }

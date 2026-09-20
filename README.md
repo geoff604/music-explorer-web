@@ -68,7 +68,7 @@ how the app looks.
 | F was named "Fb" | F |
 | Select Range accepted any values | End must follow start and lie inside the file |
 | Crashed if you selected during playback | Cannot happen |
-| Piano tone clicked on start and stop | 5 ms fades |
+| Piano tone clicked on start, stop and when changing pitch | 10 ms eased fades; each key sounds on its own voice (up to four), so a new key crossfades with the one before instead of retuning it |
 | No playhead, selection shown only after release | Playhead; live selection while dragging |
 
 Note names use flats (Db, Eb, Gb, Ab, Bb), as the original did.

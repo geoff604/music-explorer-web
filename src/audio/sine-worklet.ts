@@ -1,9 +1,9 @@
 /**
- * AudioWorklet processor wrapping {@link SineVoice}. Runs in the audio rendering thread; the main
+ * AudioWorklet processor wrapping {@link VoiceBank}. Runs in the audio rendering thread; the main
  * thread sends `{ type: 'on', hz }` / `{ type: 'off' }` messages.
  */
 
-import { SineVoice } from '../core/sineVoice';
+import { VoiceBank } from '../core/voiceBank';
 
 // The DOM lib does not describe the AudioWorkletGlobalScope, so declare what we use.
 declare const sampleRate: number;
@@ -21,7 +21,7 @@ declare function registerProcessor(
 type Message = { type: 'on'; hz: number } | { type: 'off' };
 
 class SineProcessor extends AudioWorkletProcessor {
-  private readonly voice = new SineVoice(sampleRate);
+  private readonly voice = new VoiceBank(sampleRate);
 
   constructor() {
     super();

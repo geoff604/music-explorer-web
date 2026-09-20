@@ -216,28 +216,42 @@ body {
   min-height: 0;
   display: grid;
   /* waveform | zoom+pan | spectrum | keyboard (fixed 50px, as the original) | zoom+pan.
-     minmax(0, 1fr), not 1fr: a bare 1fr has an automatic minimum of its content, and a canvas's
-     content height is its bitmap height (CSS height x devicePixelRatio), so on a high-dpr phone
-     the rows would grow past their share and push the slider rows and status bar off-screen. */
+     minmax(0, 1fr), not 1fr: a bare 1fr has an automatic minimum of its content. Each row is
+     placed explicitly below, so no engine's auto-placement can put an item in the wrong row. */
   grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr) 50px auto;
   background: #fff;
   position: relative;
   overflow: hidden;
 }
+.cell-wave { grid-row: 1; }
+#wave-bars { grid-row: 2; }
+.cell-spectrum { grid-row: 3; }
+.cell-keys { grid-row: 4; }
+#key-bars { grid-row: 5; }
+
+/* Each canvas sits in a cell and is absolutely positioned to fill it. A canvas is a replaced
+   element whose size otherwise depends on its bitmap and on how `height: 100%` resolves against
+   a grid area; on iOS Safari the canvases came out taller than their rows and covered the slider
+   rows and the spectrum. Filling a positioned cell makes the size depend on nothing else. */
+.cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
 
 .pane {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 0;
-  min-width: 0;
   background: #fff;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
 .pane.wave {
-  grid-area: 1 / 1; /* shares its cell with .empty-state, so both are placed explicitly */
   cursor: crosshair;
 }
 .pane.spectrum {
@@ -249,7 +263,8 @@ body {
 /* Shown over the waveform until a file is open. The panes stay white in both themes, so these
    colours are fixed rather than taken from the chrome variables. */
 .empty-state {
-  grid-area: 1 / 1;
+  position: absolute;
+  inset: 0;
   z-index: 1;
   display: flex;
   flex-direction: column;
@@ -568,6 +583,53 @@ dialog a {
 }
 .range-grid input:user-invalid {
   border-color: var(--error);
+}
+
+/* ---- layout diagnostics (only with ?debug in the URL; see ui/debug.ts) ---------------------- */
+
+.debug-layout .chrome { outline: 2px solid #f0f; outline-offset: -2px; }
+.debug-layout #panes { outline: 3px dashed orange; outline-offset: -3px; }
+.debug-layout .cell { outline: 2px dotted #0aa; outline-offset: -2px; }
+.debug-layout #wave { outline: 2px solid red; outline-offset: -2px; }
+.debug-layout #wave-bars { outline: 2px solid blue; outline-offset: -2px; }
+.debug-layout #spectrum { outline: 2px solid green; outline-offset: -2px; }
+.debug-layout #keys { outline: 2px solid red; outline-offset: -2px; }
+.debug-layout #key-bars { outline: 2px solid blue; outline-offset: -2px; }
+.debug-layout .statusbar { outline: 2px solid green; outline-offset: -2px; }
+#debug-readout {
+  position: fixed;
+  left: 4px;
+  top: 90px;
+  z-index: 100;
+  box-sizing: border-box;
+  max-width: calc(100vw - 8px);
+  max-height: calc(100dvh - 100px);
+  overflow: hidden;
+  padding: 4px 6px;
+  font: 10px/1.25 ui-monospace, Menlo, monospace;
+  color: #fff;
+  background: rgb(0 0 0 / 0.78);
+  border-radius: 4px;
+  pointer-events: none;
+}
+#debug-readout pre {
+  margin: 0;
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* Wrapped in full, unlike the status bar, which cuts a long message off. */
+#debug-readout .debug-errors {
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.35);
+  color: #ffb4ab;
+  font-weight: 700;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#debug-readout .debug-errors[hidden] {
+  display: none;
 }
 
 @media (max-width: 520px) {

@@ -2,7 +2,6 @@ import { AudioEngine, LoadedAudio } from '../audio/AudioEngine';
 import { TICKS_PER_SECOND, formatTicks, ticksToSample, ticksToSeconds } from '../core/AudioTime';
 import { buildEnvelope } from '../core/envelope';
 import { hitTestKey } from '../core/keyboardGeometry';
-import { noteStatusText } from '../core/notes';
 import { WindowKind, analyzeRange } from '../core/spectrum';
 import { KeyboardView } from './KeyboardView';
 import { SpectrumView } from './SpectrumView';
@@ -52,7 +51,6 @@ export class App {
   private readonly keyZoom = el<HTMLInputElement>('key-zoom');
   private readonly keyPan = el<HTMLInputElement>('key-pan');
   private readonly statusMsg = el<HTMLElement>('status-msg');
-  private readonly statusNote = el<HTMLElement>('status-note');
   private readonly fileInput = el<HTMLInputElement>('file');
   private readonly emptyState = el<HTMLElement>('empty-state');
 
@@ -535,7 +533,8 @@ export class App {
       held = false;
       this.engine.noteOff();
       this.keys.pressed = -1;
-      this.statusNote.textContent = '';
+      this.spectrum.pressed = -1;
+      this.spectrum.invalidate();
       this.keys.invalidate();
     };
 
@@ -547,7 +546,8 @@ export class App {
       canvas.setPointerCapture(e.pointerId);
       held = true;
       this.keys.pressed = note;
-      this.statusNote.textContent = `Clicked: ${noteStatusText(note)}`;
+      this.spectrum.pressed = note;
+      this.spectrum.invalidate();
       this.keys.invalidate();
       void this.engine.noteOn(note);
     });

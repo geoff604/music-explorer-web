@@ -6,7 +6,7 @@ export const COLORS = {
   wave: '#0000ff',
   /** Octave labels and the waveform's time readouts: RGB(255,0,255). */
   label: '#ff00ff',
-  /** Pressed-key dot: RGB(0,255,0). */
+  /** Pressed key's fill: RGB(0,255,0), the colour the original used for its pressed-key dot. */
   pressed: '#00ff00',
   /** Selection anchor while dragging: RGB(255,0,0). */
   anchor: '#ff0000',

@@ -9,6 +9,9 @@ import { COLORS, CanvasView, UI_FONT } from './CanvasView';
  * black keys are filled (top half); white keys are just dividing lines. C and F, which follow
  * a white key, get a full-height line at their own left edge; the other white keys get a
  * half-height line through the middle of the black key before them.
+ *
+ * A pressed key is lit as a whole: its entire outline is filled, so it cannot be hidden by the
+ * mouse cursor. (The original drew a small dot on the key, which the cursor covered.)
  */
 export class KeyboardView extends CanvasView {
   range: KeyRange = { left: 21, right: 108 };
@@ -42,17 +45,38 @@ export class KeyboardView extends CanvasView {
     ctx.stroke();
     ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
 
-    if (this.pressed >= left && this.pressed <= right) this.drawPressed(ctx, kw, h);
+    if (this.pressed >= left && this.pressed <= right) this.drawPressed(ctx, w, kw, h);
     this.drawOctaveLabels(ctx, kw);
   }
 
-  private drawPressed(ctx: CanvasRenderingContext2D, kw: number, h: number): void {
+  private drawPressed(ctx: CanvasRenderingContext2D, w: number, kw: number, h: number): void {
     const note = this.pressed;
-    const x = (note - this.range.left) * kw;
-    // A dot on the black key's face, or low on the white key's, as in the original.
-    const cy = isBlackKey(note) ? (3 * h) / 8 : (7 * h) / 8;
+    const { left, right } = this.range;
+    const half = h / 2;
+    // Same rounding as the divider lines in paint(), so the outline lands exactly on them.
+    const px = (x: number) => Math.min(w - 0.5, Math.max(0.5, Math.round(x) + 0.5));
+    const x = (note - left) * kw;
+    const x0 = px(x);
+    const x1 = px(x + kw);
+
     ctx.beginPath();
-    ctx.ellipse(x + kw / 2, cy, kw / 4, h / 8, 0, 0, Math.PI * 2);
+    if (isBlackKey(note)) {
+      ctx.rect(x0, 0.5, x1 - x0, half - 0.5);
+    } else {
+      // A white key is a cell wide across the top, but wider below the black keys' bottom edge:
+      // it reaches to the dividers at the middle of the black key on either side.
+      const lo = hasFullHeightDivider(note) ? x0 : px(x - kw / 2);
+      const hi = note < right && isBlackKey(note + 1) ? px(x + kw * 1.5) : x1;
+      ctx.moveTo(x0, 0.5);
+      ctx.lineTo(x1, 0.5);
+      ctx.lineTo(x1, half);
+      ctx.lineTo(hi, half);
+      ctx.lineTo(hi, h - 0.5);
+      ctx.lineTo(lo, h - 0.5);
+      ctx.lineTo(lo, half);
+      ctx.lineTo(x0, half);
+      ctx.closePath();
+    }
     ctx.fillStyle = COLORS.pressed;
     ctx.fill();
     ctx.strokeStyle = COLORS.ink;

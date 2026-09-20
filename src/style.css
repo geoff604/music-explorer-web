@@ -471,13 +471,6 @@ body {
   white-space: nowrap;
   min-width: 0;
 }
-#status-note {
-  flex: none;
-  min-width: 9.5em;
-  text-align: right;
-  color: var(--chrome-fg);
-  font-variant-numeric: tabular-nums;
-}
 
 /* ---- dialogs -------------------------------------------------------------------------- */
 
@@ -577,8 +570,5 @@ dialog a {
   }
   .statusbar {
     font-size: 12px;
-  }
-  #status-note {
-    min-width: 7em;
   }
 }

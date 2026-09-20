@@ -1,5 +1,5 @@
 import { KeyRange, graphSemitoneRange } from '../core/keyboardGeometry';
-import { A4_MIDI, noteName } from '../core/notes';
+import { A4_MIDI, noteName, noteStatusText } from '../core/notes';
 import { findPeaks } from '../core/peaks';
 import { compandSeries } from '../core/scaling';
 import type { Spectrum } from '../core/spectrum';
@@ -17,6 +17,15 @@ function lowerBound(xs: ArrayLike<number>, x: number): number {
   return lo;
 }
 
+interface Box {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+}
+
+const overlaps = (a: Box, b: Box) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+
 /**
  * The spectrum graph (MusicGraph.cpp / LineGraph.cpp): a bare black outline with no axes.
  *
@@ -30,21 +39,84 @@ export class SpectrumView extends CanvasView {
   showPeakLabels = true;
   /** Whether a file is open (drives the placeholder text). */
   hasFile = false;
+  /** MIDI note held down on the keyboard, or -1. */
+  pressed = -1;
 
   protected paint(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+    this.drawPressedColumn(ctx, w, h);
     const s = this.spectrum;
-    if (!s) {
-      if (this.hasFile) this.drawPrompt(ctx, w, h);
-      return;
-    }
+    let taken: Box[] = [];
+    if (s) taken = this.drawSpectrum(ctx, w, h, s);
+    else if (this.hasFile) this.drawPrompt(ctx, w, h);
+    const readout = this.drawPressedReadout(ctx);
+    if (readout) taken.push(readout);
+    this.drawPressedNote(ctx, w, taken);
+  }
 
+  /**
+   * A faint band over the pressed key's column, so its pitch can be matched to the spikes. Each
+   * note owns the same x-range here as on the keyboard below, so this lines up with the key.
+   */
+  private drawPressedColumn(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+    const { left, right } = this.range;
+    if (this.pressed < left || this.pressed > right) return;
+    const kw = w / (right - left + 1);
+    ctx.fillStyle = 'rgba(0, 200, 0, 0.2)';
+    ctx.fillRect((this.pressed - left) * kw, 0, kw, h);
+  }
+
+  /** Top-left readout in the waveform's style: which key is held. */
+  private drawPressedReadout(ctx: CanvasRenderingContext2D): Box | null {
+    const { left, right } = this.range;
+    if (this.pressed < left || this.pressed > right) return null;
+    ctx.font = `bold 14px ${UI_FONT}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    const text = `Key Pressed: ${noteStatusText(this.pressed)}`;
+    // A thin halo keeps it readable where the spectrum line passes behind it.
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = COLORS.paper;
+    ctx.strokeText(text, 4, 6);
+    ctx.fillStyle = COLORS.label;
+    ctx.fillText(text, 4, 6);
+    return { x0: 4, x1: 4 + ctx.measureText(text).width, y0: 6, y1: 6 + 17 };
+  }
+
+  /**
+   * The pressed note's name at the top of its band. It always sits on the top row, so it is skipped
+   * only if a name that is already showing (a peak label, or the readout) occupies that spot.
+   */
+  private drawPressedNote(ctx: CanvasRenderingContext2D, w: number, taken: Box[]): void {
+    const { left, right } = this.range;
+    if (this.pressed < left || this.pressed > right) return;
+    const kw = w / (right - left + 1);
+    const text = noteName(this.pressed);
+    ctx.font = `bold 12px ${UI_FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    const half = ctx.measureText(text).width / 2 + 1;
+    const x = Math.min(Math.max((this.pressed - left + 0.5) * kw, half), w - half);
+    const y = 13; // the same top row the tallest peak labels use
+    const box = { x0: x - half, x1: x + half, y0: y - 12, y1: y + 2 };
+    if (taken.some((o) => overlaps(box, o))) return;
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = COLORS.paper;
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = '#006b1f';
+    ctx.fillText(text, x, y);
+  }
+
+  /** Draws the spectrum and returns the boxes of any note labels it placed. */
+  private drawSpectrum(ctx: CanvasRenderingContext2D, w: number, h: number, s: Spectrum): Box[] {
     const { left, right } = graphSemitoneRange(this.range);
     const span = right - left;
 
     // Only the visible slice (plus one neighbour each side so the line runs off the edges).
     const i0 = Math.max(0, lowerBound(s.semitones, left) - 1);
     const i1 = Math.min(s.semitones.length, lowerBound(s.semitones, right) + 1);
-    if (i1 - i0 < 1) return;
+    if (i1 - i0 < 1) return [];
     const xs = s.semitones.subarray(i0, i1);
     const heights = compandSeries(xs, s.power.subarray(i0, i1), left, right);
 
@@ -60,7 +132,7 @@ export class SpectrumView extends CanvasView {
     }
     ctx.stroke();
 
-    if (this.showPeakLabels) this.drawPeakLabels(ctx, w, h, xs, heights, left, right);
+    return this.showPeakLabels ? this.drawPeakLabels(ctx, w, h, xs, heights, left, right) : [];
   }
 
   private drawPeakLabels(
@@ -71,7 +143,7 @@ export class SpectrumView extends CanvasView {
     heights: Float64Array,
     left: number,
     right: number,
-  ): void {
+  ): Box[] {
     const span = right - left;
     const peaks = findPeaks(xs, heights, left, right);
     ctx.font = `bold 12px ${UI_FONT}`;
@@ -85,7 +157,7 @@ export class SpectrumView extends CanvasView {
     // dropped only if all of them are taken. A thin white halo keeps it readable over spike lines.
     const LINE = 14;
     const ROWS = [0, -1, 1, -2, 2];
-    const placed: Array<{ x0: number; x1: number; y0: number; y1: number }> = [];
+    const placed: Box[] = [];
     const byHeight = [...peaks].sort((a, b) => b.height - a.height);
     ctx.lineJoin = 'round';
     ctx.lineWidth = 3;
@@ -99,7 +171,7 @@ export class SpectrumView extends CanvasView {
         const y = baseline + row * LINE;
         if (y < 12 || y > h - 4) continue;
         const box = { x0: x - half, x1: x + half, y0: y - 12, y1: y + 2 };
-        const clash = placed.some((o) => box.x0 < o.x1 && box.x1 > o.x0 && box.y0 < o.y1 && box.y1 > o.y0);
+        const clash = placed.some((o) => overlaps(box, o));
         if (clash) continue;
         placed.push(box);
         ctx.strokeText(text, x, y);
@@ -107,6 +179,7 @@ export class SpectrumView extends CanvasView {
         break;
       }
     }
+    return placed;
   }
 
   /** Empty state once a file is open: an up arrow toward the waveform, and what to do there. */

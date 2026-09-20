@@ -16,7 +16,10 @@ export const COLORS = {
   peak: '#00307a',
 } as const;
 
-export const UI_FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+/** Highest device pixel ratio a canvas bitmap is sized for. */
+const MAX_PIXEL_RATIO = 3;
+
+export const UI_FONT ='system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
 /**
  * A canvas that tracks its CSS size and the device pixel ratio, and repaints on demand.
@@ -28,6 +31,7 @@ export abstract class CanvasView {
   width = 0;
   height = 0;
   private frame = 0;
+  private bitmapRatio = 1;
 
   constructor(readonly canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
@@ -39,10 +43,17 @@ export abstract class CanvasView {
     this.invalidate();
   }
 
+  /** The pixel ratio the bitmap was sized for, capped so a phone does not allocate a huge one. */
+  private static pixelRatio(): number {
+    return Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
+  }
+
   private resize(repaintNow: boolean): void {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = CanvasView.pixelRatio();
     const w = this.canvas.clientWidth;
     const h = this.canvas.clientHeight;
+    // Not laid out yet (or hidden). Load-bearing: the ResizeObserver above fires once the canvas
+    // gets a size, and that is what recovers from this early return.
     if (w === 0 || h === 0) return;
     const pw = Math.round(w * dpr);
     const ph = Math.round(h * dpr);
@@ -52,6 +63,7 @@ export abstract class CanvasView {
     }
     this.width = w;
     this.height = h;
+    this.bitmapRatio = dpr;
     // Resizing clears a canvas, so repaint straight away rather than waiting a frame (no flicker).
     if (repaintNow) this.paintNow();
   }
@@ -67,6 +79,9 @@ export abstract class CanvasView {
 
   paintNow(): void {
     if (this.width === 0 || this.height === 0) return;
+    // ResizeObserver does not fire when only the pixel ratio changes (browser zoom, a move to
+    // another display), which would leave the bitmap blurry or oversized.
+    if (this.bitmapRatio !== CanvasView.pixelRatio()) this.resize(false);
     const dpr = this.canvas.width / this.width;
     const ctx = this.ctx;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

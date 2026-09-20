@@ -2,6 +2,10 @@
 
 See which notes are playing in a clip of music.
 
+**[Try it in your browser](https://geoff604.github.io/music-explorer-web/dist/)**
+
+![Music Explorer web screenshot](screenshots/screenshot_01_music-explorer-web.png)
+
 Music Explorer uses Fourier Transforms to visually identify which notes are being played in a clip of music
 and how music is made up of many overtones.
 

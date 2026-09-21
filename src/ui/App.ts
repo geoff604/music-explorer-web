@@ -21,6 +21,9 @@ const VERTICAL_ZOOM_STEP = 1.4;
 const MIN_EXTENT = 0.01;
 const ZOOM_BUTTON_FACTOR = 1.5; // view span / key count changes by this much per click
 const AUTO_SCROLL_MARGIN = 0.05; // fraction of the view left before the playhead after a page turn
+const TOUCH_DRAG_SLOP_PX = 12; // how far a press must move before it counts as a selection drag, not a tap
+const PEN_DRAG_SLOP_PX = 8;
+const MOUSE_DRAG_SLOP_PX = 4;
 const MAX_ERRORS = 5; // how many recent errors the debug readout keeps
 
 const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
@@ -414,6 +417,11 @@ export class App {
   private wireWaveform(): void {
     const canvas = this.wave.canvas;
     let pan: { x: number; left: number } | null = null;
+    // A press only becomes a selection drag once the pointer has travelled this far (in screen pixels,
+    // so in ticks it scales with the current zoom). Until then it is a tap that just places the cursor.
+    // Fingers wobble far more than a mouse, so touch needs a bigger dead zone.
+    let press: { x: number; slop: number; dragging: boolean } | null = null;
+    const slopFor = (e: PointerEvent) => (e.pointerType === 'touch' ? TOUCH_DRAG_SLOP_PX : e.pointerType === 'pen' ? PEN_DRAG_SLOP_PX : MOUSE_DRAG_SLOP_PX);
 
     const tickAt = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
@@ -434,6 +442,7 @@ export class App {
       } else if (e.button === 0) {
         const t = tickAt(e);
         this.wave.drag = { anchor: t, current: t };
+        press = { x: e.clientX, slop: slopFor(e), dragging: false };
         this.wave.invalidate();
       }
     });
@@ -443,9 +452,12 @@ export class App {
       if (pan) {
         const dx = e.clientX - pan.x;
         this.setWaveView(pan.left - (dx / canvas.clientWidth) * this.wave.span, this.wave.span);
-      } else if (this.wave.drag) {
-        this.wave.drag.current = tickAt(e);
-        this.wave.invalidate();
+      } else if (this.wave.drag && press) {
+        if (!press.dragging && Math.abs(e.clientX - press.x) >= press.slop) press.dragging = true;
+        if (press.dragging) {
+          this.wave.drag.current = tickAt(e);
+          this.wave.invalidate();
+        }
       }
     });
 
@@ -459,8 +471,10 @@ export class App {
       const drag = this.wave.drag;
       if (!drag) return;
       this.wave.drag = null;
+      const dragged = press?.dragging ?? false;
+      press = null;
       if (commit) {
-        const current = tickAt(e);
+        const current = dragged ? tickAt(e) : drag.anchor; // a tap is an empty selection at the press point
         this.wave.selection = {
           start: Math.min(drag.anchor, current),
           end: Math.max(drag.anchor, current),

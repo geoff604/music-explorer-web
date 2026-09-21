@@ -107,3 +107,8 @@ canvas views and controller are in `src/ui/`, and playback and the tone generato
 
 GNU General Public License, version 3 or (at your option) any later version. See [LICENSE](LICENSE)
 and [NOTICE](NOTICE).
+
+## Source code
+
+The source code and issue tracker are on GitHub:
+<https://github.com/geoff604/music-explorer-web>
